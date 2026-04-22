@@ -1,133 +1,123 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { formatDistanceToNow } from "date-fns";
-import { ArrowLeft, ExternalLink, Github, ShieldCheck, Star } from "lucide-react";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { ArrowUpRight, Github, Star } from "lucide-react";
 import { InstallCommand } from "@/components/InstallCommand";
-import { UptimeStatus } from "@/components/UptimeStatus";
+import { TrustBadge } from "@/components/TrustBadge";
+import { UptimeBadge } from "@/components/UptimeBadge";
 import { Badge } from "@/components/ui/badge";
-import { hasDirectoryAccessFromServerContext } from "@/lib/paywall";
-import { getServerById, listServerChecks } from "@/lib/server-repository";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAccessFromCookies } from "@/lib/access";
+import { getServerById } from "@/lib/database";
+import { formatDate, formatNumber, timeAgo } from "@/lib/utils";
 
-type ServerDetailProps = {
+interface ServerDetailPageProps {
   params: Promise<{ id: string }>;
-};
+}
 
-export default async function ServerDetailPage({ params }: ServerDetailProps) {
-  const access = await hasDirectoryAccessFromServerContext();
-  if (!access.granted) {
-    redirect("/directory");
+export async function generateMetadata({ params }: ServerDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const server = await getServerById(id);
+
+  if (!server) {
+    return {
+      title: "Server Not Found"
+    };
   }
 
-  const routeParams = await params;
-  const decodedId = decodeURIComponent(routeParams.id);
-  const server = await getServerById(decodedId);
+  return {
+    title: `${server.name} MCP Server`,
+    description: server.description,
+    openGraph: {
+      title: `${server.name} on MCP Directory`,
+      description: server.description,
+      url: `https://mcp-directory.app/server/${server.id}`
+    }
+  };
+}
+
+export default async function ServerDetailPage({ params }: ServerDetailPageProps): Promise<React.JSX.Element> {
+  const access = await getAccessFromCookies();
+  if (!access) {
+    notFound();
+  }
+
+  const { id } = await params;
+  const server = await getServerById(id);
 
   if (!server) {
     notFound();
   }
 
-  const checks = await listServerChecks(server.id);
-
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-      <Link href="/directory" className="inline-flex items-center text-sm text-sky-300">
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to directory
-      </Link>
+    <main className="mx-auto max-w-4xl px-6 py-10">
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <Link href="/directory" className="text-sm text-cyan-300 hover:text-cyan-200">
+          Back to directory
+        </Link>
+        <a
+          href={server.repositoryUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 text-sm text-slate-200 hover:text-slate-50"
+        >
+          <Github className="h-4 w-4" />
+          Open GitHub
+          <ArrowUpRight className="h-3.5 w-3.5" />
+        </a>
+      </div>
 
-      <section className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-semibold">{server.name}</h1>
-            <p className="mt-2 text-[var(--muted)]">{server.description}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Badge className="border-sky-500/30 bg-sky-500/10 text-sky-200">
-                <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-                Trust {server.trustScore}/100
-              </Badge>
-              <Badge>
-                <Star className="mr-1.5 h-3.5 w-3.5" />
-                {server.stars.toLocaleString()} stars
-              </Badge>
-              <Badge>@{server.authorLogin}</Badge>
-              {server.pushedAt ? (
-                <Badge>
-                  Updated {formatDistanceToNow(new Date(server.pushedAt), { addSuffix: true })}
-                </Badge>
-              ) : null}
+      <Card>
+        <CardHeader className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <UptimeBadge uptime={server.uptime30d} />
+            <TrustBadge score={server.trustScore} />
+          </div>
+          <CardTitle className="text-3xl text-slate-50">{server.name}</CardTitle>
+          <p className="text-sm leading-relaxed text-slate-300">{server.description}</p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Repository</p>
+              <p className="mt-2 text-sm text-slate-200">{server.repoFullName}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Maintainer</p>
+              <p className="mt-2 text-sm text-slate-200">@{server.ownerLogin}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Stars</p>
+              <p className="mt-2 inline-flex items-center gap-1 text-sm text-slate-200">
+                <Star className="h-4 w-4" />
+                {formatNumber(server.stars)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">Last Commit</p>
+              <p className="mt-2 text-sm text-slate-200">
+                {formatDate(server.lastCommitAt)} ({timeAgo(server.lastCommitAt)})
+              </p>
             </div>
           </div>
-          <a
-            href={server.repoUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center rounded-xl border border-[var(--border)] px-3 py-2 text-sm text-[var(--foreground)] hover:bg-white/5"
-          >
-            <Github className="mr-2 h-4 w-4" />
-            Open repository
-            <ExternalLink className="ml-2 h-4 w-4" />
-          </a>
-        </div>
 
-        <div className="mt-5">
-          <UptimeStatus
-            uptimePercent={server.uptimePercent}
-            checks={server.checks}
-            lastCheckedAt={server.lastCheckedAt}
-            lastStatusCode={server.lastStatusCode}
-          />
-        </div>
+          <section>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-300">Install Command</h2>
+            <InstallCommand command={server.installCommand} />
+          </section>
 
-        <InstallCommand command={server.installCommand} />
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          {server.topics.map((topic) => (
-            <Badge key={topic} className="text-[11px] text-[var(--muted)]">
-              {topic}
-            </Badge>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
-        <h2 className="text-lg font-semibold">Recent Uptime Checks</h2>
-        {checks.length === 0 ? (
-          <p className="mt-3 text-sm text-[var(--muted)]">
-            Uptime checks will appear after running the monitor cron job.
-          </p>
-        ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border)] text-left text-[var(--muted)]">
-                  <th className="pb-2 font-medium">Timestamp</th>
-                  <th className="pb-2 font-medium">Status</th>
-                  <th className="pb-2 font-medium">HTTP</th>
-                  <th className="pb-2 font-medium">Latency</th>
-                </tr>
-              </thead>
-              <tbody>
-                {checks.map((check) => (
-                  <tr key={`${server.id}-${check.checkedAt}`} className="border-b border-[var(--border)]/50">
-                    <td className="py-2 text-[var(--muted)]">{new Date(check.checkedAt).toLocaleString()}</td>
-                    <td className="py-2">
-                      {check.ok ? (
-                        <span className="text-emerald-300">Healthy</span>
-                      ) : (
-                        <span className="text-amber-300">Issue</span>
-                      )}
-                    </td>
-                    <td className="py-2 text-[var(--muted)]">{check.statusCode ?? "-"}</td>
-                    <td className="py-2 text-[var(--muted)]">
-                      {check.latencyMs !== null ? `${check.latencyMs}ms` : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+          <section>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-300">Topics</h2>
+            <div className="flex flex-wrap gap-2">
+              {server.topics.length > 0 ? (
+                server.topics.map((topic) => <Badge key={topic}>{topic}</Badge>)
+              ) : (
+                <p className="text-sm text-slate-400">No topics detected for this repository.</p>
+              )}
+            </div>
+          </section>
+        </CardContent>
+      </Card>
     </main>
   );
 }

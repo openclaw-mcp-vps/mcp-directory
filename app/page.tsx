@@ -1,168 +1,170 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Radar, Shield, Sparkles, Zap } from "lucide-react";
-import { PricingCheckout } from "@/components/PricingCheckout";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { directoryStats } from "@/lib/server-repository";
-import { hasDirectoryAccessFromServerContext } from "@/lib/paywall";
+import type { Metadata } from "next";
+import { ArrowRight, CheckCircle2, DatabaseZap, ShieldCheck, TimerReset } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default async function HomePage() {
-  const stats = await directoryStats();
-  const access = await hasDirectoryAccessFromServerContext();
+export const metadata: Metadata = {
+  title: "MCP Directory — Curated MCP Servers With Uptime + Install Commands",
+  description:
+    "Browse 200+ MCP servers with uptime checks, trust scoring, and one-click install commands. Built for Claude Code + Cursor teams.",
+  openGraph: {
+    title: "MCP Directory",
+    description:
+      "Stop hunting for MCP servers in random repos. Use a curated catalog with live uptime and trust signals.",
+    url: "https://mcp-directory.app"
+  }
+};
+
+const problems = [
+  "GitHub search is noisy, so teams waste hours validating random MCP repos.",
+  "You can’t quickly tell if a server is actively maintained or abandoned.",
+  "Install steps vary by stack, and copy-pasting from READMEs slows adoption.",
+  "No single place tracks uptime, trust, and newly released MCP servers."
+];
+
+const features = [
+  {
+    icon: DatabaseZap,
+    title: "Curated 200+ Server Catalog",
+    description:
+      "We crawl GitHub and index high-signal MCP servers across tooling, data, browser automation, and internal ops use cases."
+  },
+  {
+    icon: TimerReset,
+    title: "Live Uptime + Last Updated",
+    description:
+      "Each listing shows recent uptime and freshness so you can avoid dead integrations before rollout."
+  },
+  {
+    icon: ShieldCheck,
+    title: "Trust Score From Author Reputation",
+    description:
+      "Trust scoring blends maintainer reputation, stars, recency, issue pressure, and repository hygiene."
+  },
+  {
+    icon: CheckCircle2,
+    title: "One-Click Install Commands",
+    description:
+      "Every server card includes a copy-ready command so engineers can go from discovery to running code in seconds."
+  }
+];
+
+const faqs = [
+  {
+    q: "Who is MCP Directory for?",
+    a: "It is built for Claude Code and Cursor power users, plus engineering teams standardizing on MCP for internal workflows."
+  },
+  {
+    q: "What does the paid plan unlock?",
+    a: "The paid plan unlocks the full searchable catalog, trust-ranked sorting, uptime telemetry, and team-ready install snippets."
+  },
+  {
+    q: "How is trust calculated?",
+    a: "Trust scores combine repository maintenance signals, maintainer profile quality, and project adoption metrics into a 0-100 score."
+  },
+  {
+    q: "Can I use it with my team?",
+    a: "Yes. Access is mapped to org seats so teams can adopt a common vetted list instead of each developer doing ad-hoc repo reviews."
+  }
+];
+
+export default function HomePage(): React.JSX.Element {
+  const paymentLink = process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK;
 
   return (
-    <main className="mx-auto max-w-6xl px-4 pb-20 pt-8 sm:px-6 lg:px-8">
-      <header className="flex items-center justify-between border-b border-[var(--border)] pb-5">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-sky-300">mcp-tools</p>
-          <h1 className="mt-1 text-xl font-semibold">MCP Directory</h1>
+    <main className="min-h-screen pb-24">
+      <section className="grid-lines relative overflow-hidden border-b border-slate-800">
+        <div className="mx-auto max-w-6xl px-6 py-16 sm:py-24">
+          <div className="max-w-3xl">
+            <p className="inline-flex rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-medium tracking-wide text-cyan-200">
+              MCP tools, vetted for production
+            </p>
+            <h1 className="mt-6 text-4xl font-semibold leading-tight text-slate-50 sm:text-6xl">
+              MCP Directory
+              <span className="mt-2 block text-cyan-300">Curated MCP servers with uptime + install commands</span>
+            </h1>
+            <p className="mt-6 text-base leading-relaxed text-slate-300 sm:text-lg">
+              Stop guessing which MCP servers are safe to adopt. MCP Directory tracks uptime, repository health, and author trust so
+              your team can ship MCP workflows faster.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a
+                href={paymentLink}
+                className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/40 bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+              >
+                Buy Access ($9/seat/mo)
+                <ArrowRight className="h-4 w-4" />
+              </a>
+              <Link
+                href="/directory"
+                className="inline-flex items-center rounded-lg border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500"
+              >
+                Preview Directory
+              </Link>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/directory">
-            <Button variant="outline">Directory</Button>
-          </Link>
-          {access.granted ? (
-            <Link href="/directory">
-              <Button>Open Access</Button>
-            </Link>
-          ) : null}
-        </div>
-      </header>
+      </section>
 
-      <section className="grid gap-10 py-16 lg:grid-cols-[1.4fr_1fr] lg:items-center">
-        <div>
-          <Badge className="border-sky-500/30 bg-sky-500/10 text-sky-200">Curated MCP intelligence</Badge>
-          <h2 className="mt-4 text-4xl font-bold leading-tight sm:text-5xl">
-            Ship MCP workflows faster with a trusted server catalog.
-          </h2>
-          <p className="mt-4 max-w-2xl text-lg text-[var(--muted)]">
-            Discover 200+ MCP servers ranked by reliability, maintenance, and author reputation. Every
-            listing includes last update, uptime trend, and one-click install commands for Claude Code and
-            Cursor.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/directory">
-              <Button className="h-11 px-5">
-                Explore Directory
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <a href="#pricing">
-              <Button variant="outline" className="h-11 px-5">
-                See Pricing
-              </Button>
+      <section className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
+        <h2 className="text-2xl font-semibold text-slate-50 sm:text-3xl">Why teams struggle with MCP discovery</h2>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          {problems.map((problem) => (
+            <Card key={problem}>
+              <CardContent className="pt-6">
+                <p className="text-sm leading-relaxed text-slate-300">{problem}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
+        <h2 className="text-2xl font-semibold text-slate-50 sm:text-3xl">What MCP Directory gives you</h2>
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          {features.map((feature) => (
+            <Card key={feature.title}>
+              <CardHeader>
+                <feature.icon className="mb-3 h-5 w-5 text-cyan-300" />
+                <CardTitle>{feature.title}</CardTitle>
+                <CardDescription>{feature.description}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 py-16 sm:py-20" id="pricing">
+        <Card className="border-cyan-400/30 bg-slate-950/90">
+          <CardHeader>
+            <CardTitle className="text-2xl text-slate-50">Simple pricing for serious MCP users</CardTitle>
+            <CardDescription>
+              $9 per org seat per month. Includes full access to the directory, trust score ranking, and uptime telemetry.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <a
+              href={paymentLink}
+              className="inline-flex items-center gap-2 rounded-lg border border-cyan-300/40 bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+            >
+              Start with Stripe Checkout
+              <ArrowRight className="h-4 w-4" />
             </a>
-          </div>
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-              <p className="text-2xl font-semibold">{stats.totalServers.toLocaleString()}+</p>
-              <p className="mt-1 text-sm text-[var(--muted)]">Tracked MCP servers</p>
-            </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-              <p className="text-2xl font-semibold">{stats.updatedThisWeek}</p>
-              <p className="mt-1 text-sm text-[var(--muted)]">Updated this week</p>
-            </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-              <p className="text-2xl font-semibold">{stats.avgTrust}/100</p>
-              <p className="mt-1 text-sm text-[var(--muted)]">Average trust score</p>
-            </div>
-          </div>
-        </div>
-
-        <div id="pricing" className="rounded-2xl border border-sky-500/30 bg-slate-900/80 p-6">
-          <p className="text-xs uppercase tracking-[0.2em] text-sky-300">Pro access</p>
-          <h3 className="mt-2 text-2xl font-semibold">$9 / seat / month</h3>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            Team subscription with org-level access control, webhook billing sync, and searchable directory API.
-          </p>
-          <ul className="mt-5 space-y-2 text-sm">
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-              Unlimited searches and filters
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-              Uptime checks and trust scoring
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-              New-server release alerts
-            </li>
-          </ul>
-          <div className="mt-6">
-            <PricingCheckout />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </section>
 
-      <section className="grid gap-4 border-y border-[var(--border)] py-12 sm:grid-cols-3">
-        <article className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-          <Radar className="h-5 w-5 text-sky-300" />
-          <h3 className="mt-3 font-semibold">Problem</h3>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            Good MCP servers are scattered across GitHub. Most teams waste hours comparing stale repos and
-            broken setup steps.
-          </p>
-        </article>
-        <article className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-          <Sparkles className="h-5 w-5 text-emerald-300" />
-          <h3 className="mt-3 font-semibold">Solution</h3>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            MCP Directory continuously crawls GitHub, scores trust by maintainer signal, and verifies uptime so
-            your team can install faster with confidence.
-          </p>
-        </article>
-        <article className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-          <Shield className="h-5 w-5 text-amber-300" />
-          <h3 className="mt-3 font-semibold">Outcome</h3>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            Fewer incidents, fewer dead integrations, and a clear shortlist of production-worthy MCP servers for
-            every stack.
-          </p>
-        </article>
-      </section>
-
-      <section className="py-14">
-        <h3 className="text-2xl font-semibold">What You Get</h3>
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-            <Zap className="h-5 w-5 text-sky-300" />
-            <h4 className="mt-3 font-semibold">One-click install commands</h4>
-            <p className="mt-2 text-sm text-[var(--muted)]">
-              Every listing includes copy-ready commands optimized for common MCP runtimes.
-            </p>
-          </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-            <Shield className="h-5 w-5 text-emerald-300" />
-            <h4 className="mt-3 font-semibold">Trust + uptime scoring</h4>
-            <p className="mt-2 text-sm text-[var(--muted)]">
-              Combine GitHub health signals with real uptime checks to prioritize stable options.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-7">
-        <h3 className="text-2xl font-semibold">FAQ</h3>
-        <div className="mt-6 space-y-5">
-          <div>
-            <h4 className="font-medium">Who is this for?</h4>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Claude Code and Cursor power users, plus dev teams standardizing on MCP.
-            </p>
-          </div>
-          <div>
-            <h4 className="font-medium">How often is data refreshed?</h4>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              GitHub metadata is refreshed by cron, and uptime checks can run every 15 minutes.
-            </p>
-          </div>
-          <div>
-            <h4 className="font-medium">Is access tied to an organization?</h4>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              Yes. Checkout creates org-scoped access, and session cookies validate active subscription status.
-            </p>
-          </div>
+      <section className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
+        <h2 className="text-2xl font-semibold text-slate-50 sm:text-3xl">FAQ</h2>
+        <div className="mt-8 grid gap-4">
+          {faqs.map((item) => (
+            <Card key={item.q}>
+              <CardHeader>
+                <CardTitle className="text-base">{item.q}</CardTitle>
+                <CardDescription className="text-sm leading-relaxed">{item.a}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
         </div>
       </section>
     </main>

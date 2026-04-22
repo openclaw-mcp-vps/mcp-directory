@@ -1,61 +1,51 @@
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
-import { Badge } from "@/components/ui/badge";
+import { ArrowUpRight, Star } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InstallCommand } from "@/components/InstallCommand";
-import { UptimeStatus } from "@/components/UptimeStatus";
-import type { ServerRecord } from "@/lib/server-repository";
+import { TrustBadge } from "@/components/TrustBadge";
+import { UptimeBadge } from "@/components/UptimeBadge";
+import type { DirectoryServer } from "@/lib/types";
+import { formatNumber, timeAgo } from "@/lib/utils";
 
-type ServerCardProps = {
-  server: ServerRecord;
-};
+interface ServerCardProps {
+  server: DirectoryServer;
+}
 
-export function ServerCard({ server }: ServerCardProps) {
+export function ServerCard({ server }: ServerCardProps): React.JSX.Element {
   return (
-    <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface)]/85 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Link href={`/server/${encodeURIComponent(server.id)}`} className="group inline-block">
-            <h3 className="text-lg font-semibold text-[var(--foreground)] transition group-hover:text-sky-300">
-              {server.name}
-            </h3>
-          </Link>
-          <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">{server.description}</p>
+    <Card className="h-full">
+      <CardHeader>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <UptimeBadge uptime={server.uptime30d} />
+          <TrustBadge score={server.trustScore} />
         </div>
-        <Badge className="border-sky-500/30 bg-sky-500/10 text-sky-200">
-          Trust {server.trustScore}/100
-        </Badge>
-      </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Badge>{server.stars.toLocaleString()} stars</Badge>
-        <Badge>{server.forks.toLocaleString()} forks</Badge>
-        {server.language ? <Badge>{server.language}</Badge> : null}
-        <Badge>@{server.authorLogin}</Badge>
-        {server.pushedAt ? (
-          <Badge>
-            updated {formatDistanceToNow(new Date(server.pushedAt), { addSuffix: true })}
-          </Badge>
-        ) : null}
-      </div>
+        <CardTitle className="flex items-start justify-between gap-3">
+          <span>{server.name}</span>
+          <Link
+            href={`/server/${server.id}`}
+            className="inline-flex items-center gap-1 text-xs font-medium text-cyan-300 hover:text-cyan-200"
+          >
+            View
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
+        </CardTitle>
 
-      <div className="mt-4">
-        <UptimeStatus
-          uptimePercent={server.uptimePercent}
-          checks={server.checks}
-          lastCheckedAt={server.lastCheckedAt}
-          lastStatusCode={server.lastStatusCode}
-        />
-      </div>
+        <CardDescription>{server.description}</CardDescription>
+      </CardHeader>
 
-      <InstallCommand command={server.installCommand} />
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
+          <span className="inline-flex items-center gap-1">
+            <Star className="h-3.5 w-3.5" />
+            {formatNumber(server.stars)} stars
+          </span>
+          <span>Updated {timeAgo(server.lastCommitAt)}</span>
+          <span>by @{server.ownerLogin}</span>
+        </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {server.topics.slice(0, 6).map((topic) => (
-          <Badge key={topic} className="text-[11px] text-[var(--muted)]">
-            {topic}
-          </Badge>
-        ))}
-      </div>
-    </article>
+        <InstallCommand command={server.installCommand} />
+      </CardContent>
+    </Card>
   );
 }

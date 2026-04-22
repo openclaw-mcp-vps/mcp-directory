@@ -2,20 +2,10 @@
 
 :root {
   color-scheme: dark;
-  --background: #0d1117;
-  --surface: #161b22;
-  --surface-elevated: #1f2937;
-  --foreground: #e6edf3;
-  --muted: #9da7b3;
-  --border: #30363d;
-  --accent: #3b82f6;
-  --accent-strong: #2563eb;
-  --success: #10b981;
-  --warning: #f59e0b;
 }
 
 * {
-  border-color: var(--border);
+  box-sizing: border-box;
 }
 
 html,
@@ -25,14 +15,14 @@ body {
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.26), transparent 28%),
-    radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.18), transparent 20%),
-    radial-gradient(circle at 50% 100%, rgba(56, 189, 248, 0.12), transparent 32%),
-    var(--background);
-  color: var(--foreground);
-  font-family: "Satoshi", "Manrope", "SF Pro Text", "Segoe UI", sans-serif;
-  letter-spacing: -0.01em;
+  background: #0d1117;
+  color: #e2e8f0;
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  background-image:
+    radial-gradient(circle at 12% 12%, rgba(34, 211, 238, 0.14), transparent 35%),
+    radial-gradient(circle at 82% 0%, rgba(59, 130, 246, 0.18), transparent 28%),
+    radial-gradient(circle at 70% 70%, rgba(16, 185, 129, 0.08), transparent 40%);
+  background-attachment: fixed;
 }
 
 a {
@@ -40,13 +30,24 @@ a {
   text-decoration: none;
 }
 
-code {
-  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+pre,
+code,
+kbd,
+samp {
+  font-family: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-input,
-button,
-textarea,
-select {
-  font: inherit;
+.grid-lines {
+  position: relative;
+}
+
+.grid-lines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  mask-image: radial-gradient(circle at center, black 30%, transparent 90%);
 }

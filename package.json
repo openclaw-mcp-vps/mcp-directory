@@ -6,32 +6,30 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "crawl": "node cron/update-servers.js",
-    "uptime": "node cron/check-uptime.js"
+    "lint": "next lint"
   },
   "dependencies": {
-    "@octokit/rest": "^22.0.0",
-    "axios": "^1.9.0",
-    "clsx": "^2.1.1",
-    "date-fns": "^4.1.0",
     "@lemonsqueezy/lemonsqueezy.js": "^4.0.0",
-    "lucide-react": "^0.511.0",
+    "axios": "^1.8.4",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.454.0",
     "next": "^15.0.0",
-    "next-auth": "^4.24.11",
-    "node-cron": "^4.2.1",
-    "pg": "^8.16.0",
+    "next-auth": "^5.0.0-beta.25",
+    "node-cron": "^4.0.7",
+    "octokit": "^4.0.2",
+    "pg": "^8.13.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.3.0",
-    "zod": "^3.24.4"
+    "tailwind-merge": "^2.5.4",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.5",
-    "@types/node": "^22.15.3",
-    "@types/pg": "^8.15.2",
-    "@types/react": "^19.1.2",
-    "@types/react-dom": "^19.1.2",
-    "tailwindcss": "^4.1.5",
-    "typescript": "^5.8.3"
+    "@tailwindcss/postcss": "^4.1.4",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "tailwindcss": "^4.1.4",
+    "typescript": "^5.7.2"
   }
 }

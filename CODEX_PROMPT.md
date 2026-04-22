@@ -11,7 +11,7 @@ NICHE: mcp-tools
 PRICE: $$9/mo org seat/mo
 
 ARCHITECTURE SPEC:
-Next.js app with PostgreSQL backend that crawls GitHub for MCP servers, monitors uptime via cron jobs, and provides a searchable directory with install commands. Uses Lemon Squeezy for subscription billing and implements org-based access control.
+Next.js app with PostgreSQL backend that crawls GitHub for MCP servers, monitors uptime via cron jobs, and provides a searchable directory with trust scores. Uses Lemon Squeezy for subscription billing and implements org-based access control.
 
 PLANNED FILES:
 - app/page.tsx
@@ -22,17 +22,16 @@ PLANNED FILES:
 - app/api/webhooks/lemon-squeezy/route.ts
 - app/api/auth/[...nextauth]/route.ts
 - lib/database.ts
-- lib/github-crawler.ts
+- lib/crawler.ts
 - lib/uptime-monitor.ts
 - lib/trust-score.ts
+- lib/lemon-squeezy.ts
 - components/ServerCard.tsx
 - components/InstallCommand.tsx
-- components/UptimeStatus.tsx
-- prisma/schema.prisma
-- cron/update-servers.js
-- cron/check-uptime.js
+- components/TrustBadge.tsx
+- components/UptimeBadge.tsx
 
-DEPENDENCIES: next, react, typescript, tailwindcss, prisma, @prisma/client, next-auth, @auth/prisma-adapter, lemonsqueezy.js, @octokit/rest, axios, date-fns, lucide-react, clsx, zod, node-cron
+DEPENDENCIES: next, tailwindcss, prisma, @prisma/client, next-auth, @lemonsqueezy/lemonsqueezy.js, octokit, node-cron, axios, lucide-react, clsx, zod
 
 REQUIREMENTS:
 - Next.js 15 with App Router (app/ directory)
@@ -40,7 +39,7 @@ REQUIREMENTS:
 - Tailwind CSS v4
 - shadcn/ui components (npx shadcn@latest init, then add needed components)
 - Dark theme ONLY — background #0d1117, no light mode
-- Lemon Squeezy checkout overlay for payments
+- Stripe Payment Link for payments (hosted checkout — use the URL directly as the Buy button href)
 - Landing page that converts: hero, problem, solution, pricing, FAQ
 - The actual tool/feature behind a paywall (cookie-based access after purchase)
 - Mobile responsive
@@ -60,9 +59,13 @@ REQUIREMENTS:
   to package.json dependencies and re-run npm install + npm run build until it passes.
 
 ENVIRONMENT VARIABLES (create .env.example):
-- NEXT_PUBLIC_LEMON_SQUEEZY_STORE_ID
-- NEXT_PUBLIC_LEMON_SQUEEZY_PRODUCT_ID
-- LEMON_SQUEEZY_WEBHOOK_SECRET
+- NEXT_PUBLIC_STRIPE_PAYMENT_LINK  (full URL, e.g. https://buy.stripe.com/test_XXX)
+- NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY  (pk_test_... or pk_live_...)
+- STRIPE_WEBHOOK_SECRET  (set when webhook is wired)
+
+BUY BUTTON RULE: the Buy button's href MUST be `process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK`
+used as-is — do NOT construct URLs from a product ID, do NOT prepend any base URL,
+do NOT wrap it in an embed iframe. The link opens Stripe's hosted checkout directly.
 
 After creating all files:
 1. Run: npm install

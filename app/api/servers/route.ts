@@ -1,50 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { ACCESS_COOKIE } from "@/lib/access-control";
-import { hasDirectoryAccessFromRequestCookie } from "@/lib/paywall";
-import { listServers } from "@/lib/server-repository";
+import { getAccessFromRequest } from "@/lib/access";
+import { listServers } from "@/lib/database";
+import type { ServerSort } from "@/lib/types";
 
-const schema = z.object({
+export const runtime = "nodejs";
+
+const querySchema = z.object({
   q: z.string().optional(),
-  sort: z.enum(["stars", "recent", "uptime", "trust"]).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(24)
+  sort: z.enum(["stars", "trust", "uptime", "updated"]).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+  offset: z.coerce.number().int().min(0).optional()
 });
 
-export async function GET(request: NextRequest) {
-  const access = await hasDirectoryAccessFromRequestCookie(request.cookies.get(ACCESS_COOKIE)?.value);
-  if (!access.granted) {
-    return NextResponse.json(
-      {
-        error: "Payment required"
-      },
-      { status: 402 }
-    );
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const access = getAccessFromRequest(request);
+
+  if (!access) {
+    return NextResponse.json({ error: "Payment required" }, { status: 402 });
   }
 
-  const parsed = schema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
+  const parsed = querySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
+
   if (!parsed.success) {
-    return NextResponse.json(
-      {
-        error: "Invalid query parameters",
-        issues: parsed.error.flatten()
-      },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid query parameters", details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const offset = (parsed.data.page - 1) * parsed.data.limit;
+  const { q, sort, limit, offset } = parsed.data;
   const result = await listServers({
-    search: parsed.data.q,
-    sortBy: parsed.data.sort ?? "stars",
-    limit: parsed.data.limit,
+    search: q,
+    sort: (sort as ServerSort | undefined) ?? "stars",
+    limit,
     offset
   });
 
   return NextResponse.json({
-    page: parsed.data.page,
-    limit: parsed.data.limit,
+    org: access.orgSlug,
     total: result.total,
-    rows: result.rows
+    count: result.servers.length,
+    servers: result.servers
   });
 }

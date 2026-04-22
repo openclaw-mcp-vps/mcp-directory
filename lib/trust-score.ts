@@ -1,55 +1,50 @@
-import { differenceInDays } from "date-fns";
-
-export type TrustScoreInput = {
+interface TrustScoreInput {
   stars: number;
   forks: number;
   openIssues: number;
-  hasHomepage: boolean;
+  ownerType: "User" | "Organization";
+  ownerFollowers: number;
   hasLicense: boolean;
   archived: boolean;
-  ownerType: "User" | "Organization" | string;
   pushedAt: string;
   createdAt: string;
-};
-
-export function calculateTrustScore(input: TrustScoreInput): number {
-  if (input.archived) {
-    return 10;
-  }
-
-  const starsScore = Math.min(32, Math.log10(input.stars + 1) * 12);
-  const forksScore = Math.min(15, Math.log10(input.forks + 1) * 8);
-  const issuePenalty = Math.min(12, input.openIssues * 0.35);
-
-  const activeDays = Math.max(0, differenceInDays(new Date(), new Date(input.pushedAt)));
-  const freshnessScore = Math.max(0, 22 - activeDays / 6);
-
-  const repoAgeDays = Math.max(1, differenceInDays(new Date(), new Date(input.createdAt)));
-  const maturityScore = Math.min(9, Math.log10(repoAgeDays) * 3.2);
-
-  const ownerScore = input.ownerType === "Organization" ? 8 : 4;
-  const homepageScore = input.hasHomepage ? 6 : 0;
-  const licenseScore = input.hasLicense ? 6 : 0;
-
-  const raw =
-    starsScore +
-    forksScore +
-    freshnessScore +
-    maturityScore +
-    ownerScore +
-    homepageScore +
-    licenseScore -
-    issuePenalty;
-
-  return Math.max(1, Math.min(100, Math.round(raw)));
 }
 
-export function trustTier(score: number): "High" | "Medium" | "Low" {
-  if (score >= 75) {
-    return "High";
-  }
-  if (score >= 45) {
-    return "Medium";
-  }
-  return "Low";
+function clamp(value: number, min = 0, max = 100): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function logScore(value: number, maxValue: number): number {
+  if (value <= 0) return 0;
+  return (Math.log10(value + 1) / Math.log10(maxValue + 1)) * 100;
+}
+
+export function calculateTrustScore(input: TrustScoreInput): number {
+  const starScore = logScore(input.stars, 50_000) * 0.4;
+  const forkScore = logScore(input.forks, 10_000) * 0.1;
+  const followerScore = logScore(input.ownerFollowers, 100_000) * 0.2;
+  const ownerTypeBoost = input.ownerType === "Organization" ? 8 : 0;
+
+  const issuePenaltyBase = input.stars > 0 ? (input.openIssues / Math.max(input.stars, 1)) * 100 : input.openIssues;
+  const issuePenalty = Math.min(issuePenaltyBase, 20);
+
+  const now = Date.now();
+  const pushedDeltaDays = Math.round((now - new Date(input.pushedAt).getTime()) / (1000 * 60 * 60 * 24));
+  const createdDeltaDays = Math.round((now - new Date(input.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+
+  const recencyBoost = pushedDeltaDays <= 30 ? 12 : pushedDeltaDays <= 90 ? 8 : pushedDeltaDays <= 180 ? 4 : 0;
+  const maturityBoost = createdDeltaDays >= 365 ? 6 : createdDeltaDays >= 90 ? 3 : 0;
+  const licenseBoost = input.hasLicense ? 6 : 0;
+  const archivePenalty = input.archived ? 20 : 0;
+
+  return Math.round(
+    clamp(starScore + forkScore + followerScore + ownerTypeBoost + recencyBoost + maturityBoost + licenseBoost - issuePenalty - archivePenalty)
+  );
+}
+
+export function trustLabel(score: number): string {
+  if (score >= 80) return "High trust";
+  if (score >= 60) return "Trusted";
+  if (score >= 40) return "Watchlist";
+  return "Unverified";
 }

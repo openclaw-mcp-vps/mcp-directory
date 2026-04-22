@@ -1,69 +1,59 @@
-import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { markCheckoutPaid } from "@/lib/server-repository";
+import { upsertPurchase } from "@/lib/database";
+import { parseLemonWebhook, verifyLemonSignature } from "@/lib/lemon-squeezy";
 
-function verifySignature(payload: string, signature: string, secret: string): boolean {
-  const digest = createHmac("sha256", secret).update(payload).digest("hex");
-  const a = Buffer.from(signature, "utf8");
-  const b = Buffer.from(digest, "utf8");
+export const runtime = "nodejs";
 
-  if (a.length !== b.length) {
-    return false;
-  }
-
-  return timingSafeEqual(a, b);
-}
-
-function readCustomData(payload: any): Record<string, unknown> {
-  if (payload?.meta?.custom_data && typeof payload.meta.custom_data === "object") {
-    return payload.meta.custom_data as Record<string, unknown>;
-  }
-
-  if (payload?.data?.attributes?.custom_data && typeof payload.data.attributes.custom_data === "object") {
-    return payload.data.attributes.custom_data as Record<string, unknown>;
-  }
-
-  return {};
-}
-
-export async function POST(request: NextRequest) {
-  const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET;
-  if (!secret) {
-    return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 });
-  }
-
-  const signature = request.headers.get("x-signature");
-  if (!signature) {
-    return NextResponse.json({ error: "Missing signature" }, { status: 401 });
-  }
-
+export async function POST(request: NextRequest): Promise<NextResponse> {
   const rawBody = await request.text();
-  if (!verifySignature(rawBody, signature, secret)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  const signature = request.headers.get("x-signature");
+
+  if (!verifyLemonSignature(rawBody, signature)) {
+    return NextResponse.json({ error: "Invalid Lemon Squeezy signature" }, { status: 400 });
   }
 
-  const payload = JSON.parse(rawBody);
-  const eventName = payload?.meta?.event_name as string | undefined;
-  const customData = readCustomData(payload);
+  const payload = parseLemonWebhook(rawBody);
+  if (!payload) {
+    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+  }
 
-  if (
-    eventName === "order_created" ||
-    eventName === "subscription_created" ||
-    eventName === "subscription_payment_success"
-  ) {
-    const sessionId = String(customData.session_id ?? "").trim();
-    if (sessionId) {
-      await markCheckoutPaid({
-        sessionId,
-        orderId: payload?.data?.id ? String(payload.data.id) : null,
-        email: payload?.data?.attributes?.user_email ? String(payload.data.attributes.user_email) : null,
-        lemonCustomerId:
-          payload?.data?.attributes?.customer_id !== undefined
-            ? String(payload.data.attributes.customer_id)
-            : null
-      });
-    }
+  const meta = (payload.meta as Record<string, unknown> | undefined) ?? {};
+  const customData = (meta.custom_data as Record<string, unknown> | undefined) ?? {};
+  const data = (payload.data as Record<string, unknown> | undefined) ?? {};
+  const attributes = (data.attributes as Record<string, unknown> | undefined) ?? {};
+
+  const email = String(
+    attributes.user_email ?? customData.email ?? customData.user_email ?? ""
+  )
+    .trim()
+    .toLowerCase();
+
+  if (email) {
+    const orgSlug = String(customData.org_slug ?? email.split("@")[1]?.split(".")[0] ?? "default-org").toLowerCase();
+    const eventName = String(meta.event_name ?? "");
+
+    const status = eventName.includes("subscription_cancelled")
+      ? "cancelled"
+      : eventName.includes("subscription_payment_failed")
+        ? "past_due"
+        : "active";
+
+    await upsertPurchase({
+      email,
+      orgSlug,
+      seatCount: Number(customData.seat_count ?? 1) || 1,
+      status: status as "active" | "cancelled" | "past_due",
+      source: "lemon-squeezy",
+      updatedAt: new Date().toISOString()
+    });
   }
 
   return NextResponse.json({ ok: true });
+}
+
+export async function GET(): Promise<NextResponse> {
+  return NextResponse.json({
+    provider: "lemon-squeezy",
+    note: "This endpoint is maintained for compatibility. Primary billing flow uses Stripe Payment Links."
+  });
 }

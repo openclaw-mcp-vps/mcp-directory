@@ -1,44 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { getUptimeSummary, runUptimeSweep } from "@/lib/uptime-monitor";
+import { getAccessFromRequest } from "@/lib/access";
+import { listServers } from "@/lib/database";
+import { ensureUptimeMonitorStarted, runUptimeSweep } from "@/lib/uptime-monitor";
 
-const postSchema = z.object({
-  limit: z.coerce.number().int().min(1).max(500).optional()
-});
+export const runtime = "nodejs";
 
-export async function GET(request: NextRequest) {
-  const serverId = request.nextUrl.searchParams.get("serverId");
+ensureUptimeMonitorStarted();
 
-  if (!serverId) {
-    return NextResponse.json(
-      {
-        error: "Provide serverId"
-      },
-      { status: 400 }
-    );
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const access = getAccessFromRequest(request);
+  if (!access) {
+    return NextResponse.json({ error: "Payment required" }, { status: 402 });
   }
 
-  const summary = await getUptimeSummary(serverId);
-  if (!summary) {
-    return NextResponse.json({ serverId, summary: null });
-  }
+  const limit = Number(request.nextUrl.searchParams.get("limit") ?? 25);
+  const { servers } = await listServers({ sort: "uptime", limit: Number.isFinite(limit) ? limit : 25, offset: 0 });
 
-  return NextResponse.json({ serverId, summary });
+  return NextResponse.json({
+    checkedServers: servers.length,
+    data: servers.map((server) => ({
+      id: server.id,
+      name: server.name,
+      repoFullName: server.repoFullName,
+      uptime30d: server.uptime30d,
+      averageResponseMs: server.averageResponseMs,
+      lastCommitAt: server.lastCommitAt
+    }))
+  });
 }
 
-export async function POST(request: NextRequest) {
-  const secret = request.headers.get("x-cron-secret");
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  const access = getAccessFromRequest(request);
+  const cronSecret = request.headers.get("x-cron-secret");
+
+  if (!access && cronSecret !== process.env.STRIPE_WEBHOOK_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => ({}));
-  const parsed = postSchema.safeParse(body);
+  const limitParam = request.nextUrl.searchParams.get("limit");
+  const limit = limitParam ? Number(limitParam) : 60;
+  const result = await runUptimeSweep(Number.isFinite(limit) ? Math.max(1, Math.min(limit, 200)) : 60);
 
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
-
-  const result = await runUptimeSweep(parsed.data.limit ?? 200);
-  return NextResponse.json(result);
+  return NextResponse.json({ ok: true, ...result });
 }
